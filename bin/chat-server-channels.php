@@ -112,4 +112,27 @@ $channelMessagesObservable
             });
     });
 
+$channelJoinObservable
+    ->groupBy(function($elem) {
+        list (, $channel) = $elem;
+
+        return $channel;
+    })
+    ->subscribeCallback(function(Rx\Observable\GroupedObservable $observable) use($channels) {
+        $channel = $observable->getKey();
+
+        $observable
+            ->where(function($elem) use ($channels, $channel) { return $channels->in($channel, $elem[0]); })
+            ->subscribeCallback(function ($elem) use ($channels, $channel) {
+                list ($from, ) = $elem;
+
+                $clients = $channels->get($channel);
+                foreach ($clients as $client) {
+                    if ($from !== $client) {
+                        $client->send(sprintf('< connection with resourceId %d joined the channel' . PHP_EOL, $from->resourceId));
+                    }
+                }
+            });
+    });
+
 $loop->run();
